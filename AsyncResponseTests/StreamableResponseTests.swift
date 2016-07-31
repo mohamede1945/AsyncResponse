@@ -97,12 +97,16 @@ class StreamableResponseTests: XCTestCase {
         var actual: [String] = []
 
         operation(100)
-            .nextAnyway(on: zalgo) { (n) -> StreamResponse<Int> in
-                actual.append("\(n.success!)+++\(n.success!)")
+            .nextInBackground { (data) -> StreamResponse<Int> in
+                XCTAssertFalse(NSThread.isMainThread())
+                actual.append("\(data)+++\(data)")
                 return streamOperation(values)
-            }.nextAnyway(on: zalgo) { (v) -> Response<String> in
-                return Response("\(v.success!)-\(v.success!)")
-            }.always(on: zalgo) { value in
+            }
+            .nextInBackground { (data) -> Response<String> in
+                XCTAssertFalse(NSThread.isMainThread())
+                return Response("\(data)-\(data)")
+            }.always { value in
+                XCTAssertTrue(NSThread.isMainThread())
                 actual.append(value.success!)
                 if actual.count == values.count + 1 { expectation.fulfill() }
         }
@@ -113,7 +117,7 @@ class StreamableResponseTests: XCTestCase {
         XCTAssertEqual(expected, actual)
     }
 
-    func testSyncResponseThenStreamableDEADLOCK() {
+    func testSyncResponseThenStreamable() {
 
         let expectation = expectationWithDescription("stream expect")
 
@@ -121,12 +125,42 @@ class StreamableResponseTests: XCTestCase {
         var actual: [String] = []
 
         Response(100)
-            .nextAnyway(on: zalgo) { (n) -> StreamResponse<Int> in
-                actual.append("\(n.success!)+++\(n.success!)")
+            .next { (n) -> StreamResponse<Int> in
+                XCTAssertTrue(NSThread.isMainThread())
+                actual.append("\(n)+++\(n)")
                 return streamOperation(values)
-            }.nextAnyway(on: defaultQueue) { (v) -> Response<String> in
-                return Response("\(v.success!)-\(v.success!)")
+            }.next { (v) -> Response<String> in
+                XCTAssertTrue(NSThread.isMainThread())
+                return Response("\(v)-\(v)")
+            }.success { value in
+                XCTAssertTrue(NSThread.isMainThread())
+                actual.append(value)
+                if actual.count == values.count + 1 { expectation.fulfill() }
+            }.error(on: zalgo) { _ in XCTFail() }
+
+        waitForExpectationsWithTimeout(10, handler: nil)
+
+        let expected = ["100+++100", "10-10", "1-1", "2-2", "3-3", "4-4", "5-5", "6-6"]
+        XCTAssertEqual(expected, actual)
+    }
+
+    func testSyncResponseThenStreamableZalgo() {
+
+        let expectation = expectationWithDescription("stream expect")
+
+        let values = [10, 1, 2, 3, 4, 5, 6]
+        var actual: [String] = []
+
+        Response(100)
+            .next(on: zalgo) { (n) -> StreamResponse<Int> in
+                XCTAssertTrue(NSThread.isMainThread())
+                actual.append("\(n)+++\(n)")
+                return streamOperation(values)
+            }.next(on: zalgo) { (v) -> Response<String> in
+                XCTAssertTrue(NSThread.isMainThread())
+                return Response("\(v)-\(v)")
             }.success(on: zalgo) { value in
+                XCTAssertTrue(NSThread.isMainThread())
                 actual.append(value)
                 if actual.count == values.count + 1 { expectation.fulfill() }
             }.error(on: zalgo) { _ in XCTFail() }

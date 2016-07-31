@@ -111,9 +111,15 @@ extension StreamResponse {
         return nextAnyway(on: queue) { result in
             return Response<U> { success, _ in
                 success(try after(result))
-            }.withLabel("NextAnyway.Map")
+                }.withLabel("NextAnyway.Map")
         }
     }
+
+    @available(*, unavailable, message="Cannot return an optional Response")
+    public func nextAnyway<U>(on queue: dispatch_queue_t = defaultQueue, after: Result<T> throws -> Response<U>?) -> StreamResponse<U> { fatalError() }
+}
+
+extension StreamResponse {
 
     public func next<U>(on queue: dispatch_queue_t = defaultQueue, after: T throws -> Response<U>) -> StreamResponse<U> {
         return nextAnyway(on: queue) { try after($0.get()) }
@@ -123,6 +129,12 @@ extension StreamResponse {
         return nextAnyway(on: queue) { try after($0.get()) }
     }
 
+    @available(*, unavailable, message="Cannot return an optional Response")
+    public func next<U>(on queue: dispatch_queue_t = defaultQueue, after: T throws -> Response<U>?) -> StreamResponse<U> { fatalError() }
+}
+
+extension StreamResponse {
+
     public func nextInBackground<U>(after: T throws -> Response<U>) -> StreamResponse<U> {
         return next(on: defaultBackgroundQueue, after: after)
     }
@@ -131,13 +143,22 @@ extension StreamResponse {
         return next(on: defaultBackgroundQueue, after: after)
     }
 
+    @available(*, unavailable, message="Cannot return an optional Response")
+    public func nextInBackground<U>(after: T throws -> Response<U>?) -> StreamResponse<U> { fatalError() }
+}
+
+extension StreamResponse {
+
     public func asVoid() -> StreamResponse<Void> {
         return next(on: zalgo) { _ in return }
     }
+}
+
+extension StreamResponse {
 
     public func recover(on queue: dispatch_queue_t = defaultQueue, recovery: ErrorType throws -> Response<T>) -> StreamResponse<T> {
         return nextAnyway(on: queue) { result in
-            return Response<T> { success, failure in
+            return Response { success, failure in
                 switch result {
                 case .Success(let value):
                     success(value)
@@ -151,7 +172,7 @@ extension StreamResponse {
                         }
                     }
                 }
-            }.withLabel("Recover")
+                }.withLabel("Recover")
         }
     }
 
@@ -159,7 +180,10 @@ extension StreamResponse {
         return recover(on: queue) { error -> Response<T> in
             return Response { success, _ in
                 try success(recovery(error))
-            }.withLabel("Recover.Map")
+                }.withLabel("Recover.Map")
         }
     }
+
+    @available(*, unavailable, message="Cannot return an optional Response")
+    public func recover(on queue: dispatch_queue_t = defaultQueue, recovery: ErrorType throws -> Response<T>?) -> StreamResponse<T> { fatalError() }
 }

@@ -14,6 +14,9 @@ public class Response<T>: BaseResponse<T>, ResponseType {
         super.init(value)
     }
 
+    @available(*, unavailable, message="T cannot conform to ErrorType")
+    public init<T: ErrorType>(_ value: T) { fatalError() }
+
     public override init(error: ErrorType) {
         super.init(error: error)
     }
@@ -142,6 +145,15 @@ extension Response {
         }
     }
 
+    @available(*, unavailable, message="Cannot return an optional Response")
+    public func nextAnyway<U>(on queue: dispatch_queue_t = defaultQueue, after: Result<T> throws -> Response<U>?) -> Response<U> { fatalError() }
+
+    @available(*, unavailable, message="Cannot return an optional StreamResponse")
+    public func nextAnyway<U>(on queue: dispatch_queue_t = defaultQueue, after: Result<T> throws -> StreamResponse<U>?) -> StreamResponse<U> { fatalError() }
+}
+
+extension Response {
+
     public func next<U>(on queue: dispatch_queue_t = defaultQueue, after: T throws -> Response<U>) -> Response<U> {
         return nextAnyway(on: queue) { try after($0.get()) }
     }
@@ -149,6 +161,19 @@ extension Response {
     public func next<U>(on queue: dispatch_queue_t = defaultQueue, after: T throws -> U) -> Response<U> {
         return nextAnyway(on: queue) { try after($0.get()) }
     }
+
+    public func next<U>(on queue: dispatch_queue_t = defaultQueue, after: T throws -> StreamResponse<U>) -> StreamResponse<U> {
+        return nextAnyway(on: queue) { try after($0.get()) }
+    }
+
+    @available(*, unavailable, message="Cannot return an optional Response")
+    public func next<U>(on queue: dispatch_queue_t = defaultQueue, after: T throws -> Response<U>?) -> Response<U> { fatalError() }
+
+    @available(*, unavailable, message="Cannot return an optional StreamResponse")
+    public func next<U>(on queue: dispatch_queue_t = defaultQueue, after: T throws -> StreamResponse<U>?) -> StreamResponse<U> { fatalError() }
+}
+
+extension Response {
 
     public func nextInBackground<U>(after: T throws -> Response<U>) -> Response<U> {
         return next(on: defaultBackgroundQueue, after: after)
@@ -158,9 +183,25 @@ extension Response {
         return next(on: defaultBackgroundQueue, after: after)
     }
 
+    public func nextInBackground<U>(after: T throws -> StreamResponse<U>) -> StreamResponse<U> {
+        return next(on: defaultBackgroundQueue, after: after)
+    }
+
+    @available(*, unavailable, message="Cannot return an optional Response")
+    public func nextInBackground<U>(after: T throws -> Response<U>?) -> Response<U> { fatalError() }
+
+    @available(*, unavailable, message="Cannot return an optional StreamResponse")
+    public func nextInBackground<U>(after: T throws -> StreamResponse<U>?) -> StreamResponse<U> { fatalError() }
+}
+
+extension Response {
+
     public func asVoid() -> Response<Void> {
         return next(on: zalgo) { _ in return }
     }
+}
+
+extension Response {
 
     public func recover(on queue: dispatch_queue_t = defaultQueue, recovery: ErrorType throws -> Response<T>) -> Response<T> {
         return nextAnyway(on: queue) { result in
@@ -189,4 +230,30 @@ extension Response {
             }.withLabel("Recover.Map")
         }
     }
+
+    public func recover(on queue: dispatch_queue_t = defaultQueue, recovery: ErrorType throws -> StreamResponse<T>) -> StreamResponse<T> {
+        return nextAnyway(on: queue) { result in
+            return StreamResponse { success, failure in
+                switch result {
+                case .Success(let value):
+                    success(value)
+                case .Error(let error):
+                    try recovery(error).always(on: queue) { recoveryResult in
+                        switch recoveryResult {
+                        case .Success(let value):
+                            success(value)
+                        case .Error(let error):
+                            failure(error)
+                        }
+                    }
+                }
+            }.withLabel("Recover")
+        }
+    }
+
+    @available(*, unavailable, message="Cannot return an optional Response")
+    public func recover(on queue: dispatch_queue_t = defaultQueue, recovery: ErrorType throws -> Response<T>?) -> Response<T> { fatalError() }
+
+    @available(*, unavailable, message="Cannot return an optional StreamResponse")
+    public func recover(on queue: dispatch_queue_t = defaultQueue, recovery: ErrorType throws -> StreamResponse<T>?) -> StreamResponse<T> { fatalError() }
 }
