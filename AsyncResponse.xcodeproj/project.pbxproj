@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		54145E381D514BA900730DAE /* ResultTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 54145E371D514BA900730DAE /* ResultTests.swift */; };
 		546562E01D4CB6B10008B101 /* AsyncResponse.h in Headers */ = {isa = PBXBuildFile; fileRef = 546562DF1D4CB6B10008B101 /* AsyncResponse.h */; settings = {ATTRIBUTES = (Public, ); }; };
 		546562E71D4CB6B10008B101 /* AsyncResponse.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 546562DC1D4CB6B10008B101 /* AsyncResponse.framework */; };
 		546562F71D4CB6BE0008B101 /* Response.swift in Sources */ = {isa = PBXBuildFile; fileRef = 546562F61D4CB6BE0008B101 /* Response.swift */; };
@@ -36,6 +37,7 @@
 /* End PBXContainerItemProxy section */
 
 /* Begin PBXFileReference section */
+		54145E371D514BA900730DAE /* ResultTests.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ResultTests.swift; sourceTree = "<group>"; };
 		546562DC1D4CB6B10008B101 /* AsyncResponse.framework */ = {isa = PBXFileReference; explicitFileType = wrapper.framework; includeInIndex = 0; path = AsyncResponse.framework; sourceTree = BUILT_PRODUCTS_DIR; };
 		546562DF1D4CB6B10008B101 /* AsyncResponse.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AsyncResponse.h; sourceTree = "<group>"; };
 		546562E11D4CB6B10008B101 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
@@ -117,10 +119,11 @@
 		546562EA1D4CB6B10008B101 /* AsyncResponseTests */ = {
 			isa = PBXGroup;
 			children = (
+				546562ED1D4CB6B10008B101 /* Info.plist */,
+				54A403251D4E005D00028E09 /* Utilities.swift */,
 				54A403231D4E005D00028E09 /* ResponseTests.swift */,
 				54A403241D4E005D00028E09 /* StreamableResponseTests.swift */,
-				54A403251D4E005D00028E09 /* Utilities.swift */,
-				546562ED1D4CB6B10008B101 /* Info.plist */,
+				54145E371D514BA900730DAE /* ResultTests.swift */,
 			);
 			path = AsyncResponseTests;
 			sourceTree = "<group>";
@@ -253,6 +256,7 @@
 			files = (
 				54A403271D4E005D00028E09 /* ResponseTests.swift in Sources */,
 				54A403281D4E005D00028E09 /* StreamableResponseTests.swift in Sources */,
+				54145E381D514BA900730DAE /* ResultTests.swift in Sources */,
 				54A403291D4E005D00028E09 /* Utilities.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

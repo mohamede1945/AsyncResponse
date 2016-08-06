@@ -471,7 +471,7 @@ class ResponseTests: XCTestCase {
         XCTAssertEqual(3, response1.result?.success)
     }
 
-    func testResponseDontReturnClosures() {
+    func testResponseDeallocated() {
 
         class Test {
             static var deallocated = false

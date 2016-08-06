@@ -52,9 +52,9 @@ public enum Result<Value>: CustomStringConvertible, CustomDebugStringConvertible
     public var description: String {
         switch self {
         case .Success(let value):
-            return ".Success(\(value))"
+            return "Success(\(value))"
         case .Error(let error):
-            return ".Error(\(error))"
+            return "Error(\(error))"
         }
     }
 }
