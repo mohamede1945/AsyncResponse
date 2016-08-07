@@ -71,17 +71,17 @@ class ResponseTests: XCTestCase {
     }
 
     func testAsyncResponse() {
-        let (response1, success1, _) = Response<Int>.asyncResponse()
+        let (response1, resolver1) = Response<Int>.asyncResponse()
         XCTAssertFalse(response1.completed)
-        success1(1)
+        resolver1.resolveSuccess(1)
         XCTAssertTrue(response1.completed)
         XCTAssertTrue(response1.succeeded)
         XCTAssertFalse(response1.failed)
         XCTAssertEqual(1, response1.result?.success)
 
-        let (response2, _, failure2) = Response<Int>.asyncResponse()
+        let (response2, resolver2) = Response<Int>.asyncResponse()
         XCTAssertFalse(response2.completed)
-        failure2(Error.GeneralError)
+        resolver2.resolveError(Error.GeneralError)
         XCTAssertTrue(response2.completed)
         XCTAssertFalse(response2.succeeded)
         XCTAssertTrue(response2.failed)
@@ -373,7 +373,7 @@ class ResponseTests: XCTestCase {
                 XCTAssertTrue(NSThread.isMainThread())
                 XCTAssertEqual("1", result)
                 expectation2.fulfill()
-            }.nextAnyway { result -> Response<Int> in
+            }.nextAnyway { result in
                 return operation(1)
             }.success { result in
                 XCTAssertTrue(NSThread.isMainThread())
@@ -456,7 +456,7 @@ class ResponseTests: XCTestCase {
 
     func testMultipleCallsToSuccess() {
 
-        let (response1, success1, _) = Response<Int>.asyncResponse()
+        let (response1, resolver1) = Response<Int>.asyncResponse()
 
         var numberOfCalls = 0
         response1
@@ -465,9 +465,9 @@ class ResponseTests: XCTestCase {
                 XCTAssertEqual(1, numberOfCalls)
         }
 
-        success1(1)
-        success1(2) // should call the always
-        success1(3) // should call the always
+        resolver1.resolveSuccess(1)
+        resolver1.resolveSuccess(2) // should call the always
+        resolver1.resolveSuccess(3) // should call the always
         XCTAssertEqual(3, response1.result?.success)
     }
 
@@ -475,13 +475,13 @@ class ResponseTests: XCTestCase {
 
         class Test {
             static var deallocated = false
-            let (response1, success1, _) = Response<Int>.asyncResponse()
+            let (response1, resolver1) = Response<Int>.asyncResponse()
 
             init() {
                 response1.always(on: zalgo) { _ in
                     XCTAssertNotNil(self.response1)
                 }
-                success1(1)
+                resolver1.resolveSuccess(1)
             }
 
             deinit {

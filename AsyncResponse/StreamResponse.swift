@@ -8,182 +8,81 @@
 
 import Foundation
 
-private protocol StreamType {
-    func stopStreaming()
-}
-
-public class StreamResponse<T>: BaseResponse<T>, ResponseType, StreamType {
-
-    private var children: [StreamType] = []
-    private let stopStreamingOperation: (() -> Void)?
+public class StreamResponse<T>: BaseResponse<T>, StreamResponseType {
 
     public override init(_ value: T) {
-        self.stopStreamingOperation = nil
         super.init(value)
     }
 
+    @available(*, unavailable, message="T cannot conform to ErrorType")
+    public init<T: ErrorType>(_ value: T) { fatalError() }
+
     public override init(error: ErrorType) {
-        self.stopStreamingOperation = nil
         super.init(error: error)
     }
 
-    public init(stopStreaming: (() -> Void)? = nil, @noescape resolvers: (success: (T) -> Void, failure: (ErrorType) -> Void) throws -> Void) {
-        self.stopStreamingOperation = stopStreaming
-        super.init(resolvers: resolvers)
-    }
-
-    public class func asyncResponse(stopStreaming stopStreaming: (() -> Void)? = nil) -> (response: StreamResponse<T>, success: (T) -> Void, failure: (ErrorType) -> Void) {
-        var success: ((T) -> Void)!
-        var failure: ((ErrorType) -> Void)!
-
-        let response = StreamResponse(stopStreaming: stopStreaming) {
-            success = $0
-            failure = $1
+    public init(@noescape resolution: StreamResponseResolver<T> -> Void) {
+        super.init  { resolver -> Disposable? in
+            resolution(resolver)
+            return nil
         }
-        return (response, success, failure)
     }
 
-    override func done(completedResult: Result<T>) {
-        let completions: [Completion<T>] = synchronized {
-            _result = completedResult
-            return self.completions
+    public init(@noescape resolution: StreamResponseResolver<T> -> Disposable) {
+        super.init  { resolver -> Disposable? in
+            return resolution(resolver)
         }
-
-        executeCompletions(completions, withResult: completedResult)
     }
 
-    public func stopStreaming() {
-        let children: [StreamType] = synchronized {
-            completions.removeAll()
-            let children = self.children
-            self.children.removeAll()
-            return children
+    private override init(@noescape resolution: StreamResponseResolver<T> -> Disposable?) {
+        super.init(resolution: resolution)
+    }
+
+    public class func asyncResponse(disposable disposable: Disposable? = nil) -> (response: StreamResponse<T>, resolver: StreamResponseResolver<T>) {
+
+        var resolver: StreamResponseResolver<T>!
+        let response = StreamResponse { (r: StreamResponseResolver) -> Disposable? in
+            resolver = r
+            return disposable
         }
-
-        stopStreamingOperation?() // thread-safe, since it's immutable
-
-        children.forEach { $0.stopStreaming() }
+        return (response, resolver)
     }
 
-    public func always(on queue: dispatch_queue_t, completion: Result<T> -> Void) -> Self {
-        let completion = Completion(queue: queue, completion: completion)
+    public func nextAnyway<U>(on queue: dispatch_queue_t, after: Result<T> throws -> Response<U>) -> StreamResponse<U> {
 
-        synchronized {
-            if let result = _result {
-                executeCompletions([completion], withResult: result)
-            }
-            completions.append(completion)
-        }
+        let (monitorResponse, monitorResolver) = StreamResponse<U>.asyncResponse()
+        monitorResponse.label = "NextAnywayMonitor"
 
-        return self
-    }
-
-    public func nextAnyway<U>(on queue: dispatch_queue_t = defaultQueue, after: Result<T> throws -> Response<U>) -> StreamResponse<U> {
-
-        let (monitorResponse, success, failure) = StreamResponse<U>.asyncResponse()
-        synchronized { children.append(monitorResponse) }
-
-        monitorResponse.label = "StreamResponse.Next"
-
-        always(on: queue) { result in
+        func next(result: Result<T>, intermediate: Bool) {
             do {
                 try after(result)
-                    .always(on: zalgo) { nextResult in
-                        switch nextResult {
-                        case .Success(let value):
-                            success(value)
-                        case .Error(let error):
-                            failure(error)
-                        }
-                }
+                    .addListener(BlockResponseResolver<U>(
+                        elementBlock: { _ in },
+                        resolveBlock: {
+                            if intermediate {
+                                monitorResolver.element($0)
+                            } else {
+                                monitorResolver.resolve($0)
+                            }
+                        },
+                        disposeBlock: { }), on: queue)
             } catch {
-                failure(error)
+                if intermediate {
+                    monitorResolver.element(.Error(error))
+                } else {
+                    monitorResolver.resolve(.Error(error))
+                }
             }
         }
-        
+
+        addListener(
+            BlockResponseResolver<T>(
+                elementBlock: { next($0, intermediate: true) },
+                resolveBlock: { next($0, intermediate: true) },
+                disposeBlock: { }),
+            on: queue)
+
         return monitorResponse
     }
 }
 
-extension StreamResponse {
-
-    public func nextAnyway<U>(on queue: dispatch_queue_t = defaultQueue, after: Result<T> throws -> U) -> StreamResponse<U> {
-        return nextAnyway(on: queue) { result in
-            return Response<U> { success, _ in
-                success(try after(result))
-                }.withLabel("NextAnyway.Map")
-        }
-    }
-
-    @available(*, unavailable, message="Cannot return an optional Response")
-    public func nextAnyway<U>(on queue: dispatch_queue_t = defaultQueue, after: Result<T> throws -> Response<U>?) -> StreamResponse<U> { fatalError() }
-}
-
-extension StreamResponse {
-
-    public func next<U>(on queue: dispatch_queue_t = defaultQueue, after: T throws -> Response<U>) -> StreamResponse<U> {
-        return nextAnyway(on: queue) { try after($0.get()) }
-    }
-
-    public func next<U>(on queue: dispatch_queue_t = defaultQueue, after: T throws -> U) -> StreamResponse<U> {
-        return nextAnyway(on: queue) { try after($0.get()) }
-    }
-
-    @available(*, unavailable, message="Cannot return an optional Response")
-    public func next<U>(on queue: dispatch_queue_t = defaultQueue, after: T throws -> Response<U>?) -> StreamResponse<U> { fatalError() }
-}
-
-extension StreamResponse {
-
-    public func nextInBackground<U>(after: T throws -> Response<U>) -> StreamResponse<U> {
-        return next(on: defaultBackgroundQueue, after: after)
-    }
-
-    public func nextInBackground<U>(after: T throws -> U) -> StreamResponse<U> {
-        return next(on: defaultBackgroundQueue, after: after)
-    }
-
-    @available(*, unavailable, message="Cannot return an optional Response")
-    public func nextInBackground<U>(after: T throws -> Response<U>?) -> StreamResponse<U> { fatalError() }
-}
-
-extension StreamResponse {
-
-    public func asVoid() -> StreamResponse<Void> {
-        return next(on: zalgo) { _ in return }
-    }
-}
-
-extension StreamResponse {
-
-    public func recover(on queue: dispatch_queue_t = defaultQueue, recovery: ErrorType throws -> Response<T>) -> StreamResponse<T> {
-        return nextAnyway(on: queue) { result in
-            return Response { success, failure in
-                switch result {
-                case .Success(let value):
-                    success(value)
-                case .Error(let error):
-                    try recovery(error).always(on: queue) { recoveryResult in
-                        switch recoveryResult {
-                        case .Success(let value):
-                            success(value)
-                        case .Error(let error):
-                            failure(error)
-                        }
-                    }
-                }
-                }.withLabel("Recover")
-        }
-    }
-
-    public func recover(on queue: dispatch_queue_t = defaultQueue, recovery: ErrorType throws -> T) -> StreamResponse<T> {
-        return recover(on: queue) { error -> Response<T> in
-            return Response { success, _ in
-                try success(recovery(error))
-                }.withLabel("Recover.Map")
-        }
-    }
-
-    @available(*, unavailable, message="Cannot return an optional Response")
-    public func recover(on queue: dispatch_queue_t = defaultQueue, recovery: ErrorType throws -> Response<T>?) -> StreamResponse<T> { fatalError() }
-}

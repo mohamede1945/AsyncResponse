@@ -28,7 +28,7 @@ func streamOperation<T>(values: [T], errors: [Int: Error] = [:], queue: dispatch
     var stopped: Bool = false
     let lock = NSLock()
 
-    let (response, success, failure) = StreamResponse<T>.asyncResponse(stopStreaming: {
+    let (response, resolver) = StreamResponse<T>.asyncResponse(disposable: BlockDisposable {
         lock.lock()
         stopped = true
         lock.unlock()
@@ -48,9 +48,9 @@ func streamOperation<T>(values: [T], errors: [Int: Error] = [:], queue: dispatch
 
         queue.after(0.1) {
             if let error = errors[index] {
-                failure(error)
+                resolver.element(.Error(error))
             } else {
-                success(values[index])
+                resolver.element(.Success(values[index]))
             }
             enqueue(index + 1)
         }

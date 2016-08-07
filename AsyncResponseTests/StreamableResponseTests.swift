@@ -11,7 +11,6 @@ import XCTest
 
 class StreamableResponseTests: XCTestCase {
 
-
     func testStreamOfRespones() {
 
         let expectation = expectationWithDescription("stream expect")
@@ -175,13 +174,13 @@ class StreamableResponseTests: XCTestCase {
 
         class Test {
             static var deallocated = false
-            let (response1, success1, _) = StreamResponse<Int>.asyncResponse()
+            let (response1, resolver1) = StreamResponse<Int>.asyncResponse()
 
             init() {
                 response1.always(on: zalgo) { [weak self] _ in
                     XCTAssertNotNil(self?.response1)
                 }
-                success1(1)
+                resolver1.resolveSuccess(1)
             }
 
             deinit {
@@ -203,7 +202,7 @@ class StreamableResponseTests: XCTestCase {
 
         class Test {
             static var deallocated = false
-            let (response1, success1, _) = StreamResponse<Int>.asyncResponse()
+            let (response1, resolver1) = StreamResponse<Int>.asyncResponse()
 
             init() {
                 response1
@@ -222,9 +221,9 @@ class StreamableResponseTests: XCTestCase {
         var value: Test?
         autoreleasepool {
             value = Test()
-            value?.success1(1)
+            value?.resolver1.resolveSuccess(1)
             XCTAssertFalse(Test.deallocated)
-            value?.success1(1)
+            value?.resolver1.resolveSuccess(1)
             value = nil
         }
         XCTAssertNil(value)
@@ -274,7 +273,7 @@ class StreamableResponseTests: XCTestCase {
 
             waitForExpectationsWithTimeout(10, handler: nil)
 
-            value1?.response.stopStreaming()
+            value1?.response.dispose()
         }
         XCTAssertNil(value)
         XCTAssertTrue(Test.deallocated)
@@ -314,7 +313,7 @@ class StreamableResponseTests: XCTestCase {
         autoreleasepool {
             value = Test()
             // stop early
-            value?.parentResponse?.stopStreaming()
+            value?.parentResponse?.dispose()
             XCTAssertEqual(["100+++100"], value?.actual ?? [])
             value = nil
         }

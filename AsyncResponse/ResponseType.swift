@@ -14,17 +14,14 @@ public protocol ResponseType {
     var result: Result<T>? { get }
 
     func always(on queue: dispatch_queue_t, completion: Result<T> -> Void) -> Self
+
+    /* Swift 2.2: not possible to return specialized associatedtype.
+    associatedtype NextResponse
+    func nextAnyway<U>(on queue: dispatch_queue_t, after: Result<T> throws -> Response<U>) -> NextResponse
+    */
 }
 
 extension ResponseType {
-
-    public var succeeded: Bool {
-        return result?.succeeded == true
-    }
-
-    public var failed: Bool {
-        return result?.failed == true
-    }
 
     public func always(completion: Result<T> -> Void) -> Self {
         return always(on: defaultQueue, completion: completion)
