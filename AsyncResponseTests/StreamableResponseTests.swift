@@ -53,20 +53,6 @@ class StreamableResponseTests: XCTestCase {
         XCTAssertEqual([Error.CustomError, Error.GeneralError], actualErrors)
     }
 
-    func testInit() {
-        let response1 = StreamResponse(10)
-        XCTAssertEqual(response1.result?.success, 10)
-        var called = false
-        response1.success(on: zalgo) { value in
-            called = true
-            XCTAssertEqual(value, 10)
-        }
-        XCTAssertTrue(called)
-
-        let response2 = StreamResponse<UInt>(error: Error.CustomError)
-        XCTAssertEqual(response2.result?.error as? Error, Error.CustomError)
-    }
-
     func testTransformStreamOfRespones() {
 
         let expectation = expectationWithDescription("stream expect")
@@ -343,7 +329,7 @@ class StreamableResponseTests: XCTestCase {
 
             let expectation = expectationWithDescription("wait for next")
 
-            streamAndResolver.response.next { _ -> Response<Int> in
+            _ = streamAndResolver.response.next { _ -> Response<Int> in
                 expectation.fulfill()
                 return TestResponse()
             }
@@ -366,7 +352,7 @@ class StreamableResponseTests: XCTestCase {
 
             let expectation = expectationWithDescription("wait for 1st next")
 
-            Response(100)
+            _ = Response(100)
                 .next { _ -> StreamResponse<Int> in
                     expectation.fulfill()
                     return streamAndResolver.response

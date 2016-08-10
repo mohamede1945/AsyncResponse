@@ -10,17 +10,6 @@ import Foundation
 
 public class StreamResponse<T>: BaseResponse<T>, StreamResponseType {
 
-    public override init(_ value: T) {
-        super.init(value)
-    }
-
-    @available(*, unavailable, message="T cannot conform to ErrorType")
-    public init<T: ErrorType>(_ value: T) { fatalError() }
-
-    public override init(error: ErrorType) {
-        super.init(error: error)
-    }
-
     public init(@noescape resolution: StreamResponseResolver<T> -> Void) {
         super.init  { resolver -> Disposable? in
             resolution(resolver)
@@ -48,6 +37,7 @@ public class StreamResponse<T>: BaseResponse<T>, StreamResponseType {
         return (response, resolver)
     }
 
+    @warn_unused_result
     public func nextAnyway<U>(on queue: dispatch_queue_t, after: Result<T> throws -> Response<U>) -> StreamResponse<U> {
 
         let (monitorResponse, monitorResolver) = StreamResponse<U>.asyncResponse()

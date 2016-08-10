@@ -14,9 +14,6 @@ public class Response<T>: BaseResponse<T>, SingleResponseType {
         super.init(value)
     }
 
-    @available(*, unavailable, message="T cannot conform to ErrorType")
-    public init<T: ErrorType>(_ value: T) { fatalError() }
-
     public override init(error: ErrorType) {
         super.init(error: error)
     }
@@ -100,6 +97,7 @@ public class Response<T>: BaseResponse<T>, SingleResponseType {
         return (response, resolver)
     }
 
+    @warn_unused_result
     public func nextAnyway<U>(on queue: dispatch_queue_t = defaultQueue, after: Result<T> throws -> Response<U>) -> Response<U> {
 
         let (monitorResponse, monitorResolver) = Response<U>.asyncResponse()
@@ -124,6 +122,7 @@ public class Response<T>: BaseResponse<T>, SingleResponseType {
         return monitorResponse
     }
 
+    @warn_unused_result
     public func nextAnyway<U>(on queue: dispatch_queue_t = defaultQueue, after: Result<T> throws -> StreamResponse<U>) -> StreamResponse<U> {
 
         let (monitorResponse, monitorResolver) = StreamResponse<U>.asyncResponse()
