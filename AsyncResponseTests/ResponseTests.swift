@@ -489,13 +489,13 @@ class ResponseTests: XCTestCase {
             }
         }
         
-        var value: Test?
+        weak var weakValue: Test?
         autoreleasepool {
-            value = Test()
+            let value = Test()
             XCTAssertFalse(Test.deallocated)
-            value = nil
+            weakValue = value
         }
-        XCTAssertNil(value)
+        XCTAssertNil(weakValue)
         XCTAssertTrue(Test.deallocated)
     }
 }

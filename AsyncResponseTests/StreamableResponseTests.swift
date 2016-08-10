@@ -188,13 +188,13 @@ class StreamableResponseTests: XCTestCase {
             }
         }
 
-        var value: Test?
+        weak var weakValue: Test?
         autoreleasepool {
-            value = Test()
+            let value = Test()
+            weakValue = value
             XCTAssertFalse(Test.deallocated)
-            value = nil
         }
-        XCTAssertNil(value)
+        XCTAssertNil(weakValue)
         XCTAssertTrue(Test.deallocated)
     }
 
@@ -218,15 +218,15 @@ class StreamableResponseTests: XCTestCase {
             }
         }
 
-        var value: Test?
+        weak var weakValue: Test?
         autoreleasepool {
-            value = Test()
-            value?.resolver1.resolveSuccess(1)
+            let value = Test()
+            weakValue = value
+            value.resolver1.resolveSuccess(1)
             XCTAssertFalse(Test.deallocated)
-            value?.resolver1.resolveSuccess(1)
-            value = nil
+            value.resolver1.resolveSuccess(1)
         }
-        XCTAssertNil(value)
+        XCTAssertNil(weakValue)
         XCTAssertTrue(Test.deallocated)
     }
 
@@ -262,9 +262,12 @@ class StreamableResponseTests: XCTestCase {
             }
         }
 
-        var value: Test?
+        weak var weakValue: Test?
+        weak var weakResponse: StreamResponse<String>?
         autoreleasepool {
-            value = Test(expectation: expectationWithDescription("stream expect"))
+            var value: Test? = Test(expectation: expectationWithDescription("stream expect"))
+            weakValue = value
+            weakResponse = value?.response
 
             XCTAssertFalse(Test.deallocated)
             weak var value1 = value
@@ -275,7 +278,8 @@ class StreamableResponseTests: XCTestCase {
 
             value1?.response.dispose()
         }
-        XCTAssertNil(value)
+        XCTAssertNil(weakValue)
+        XCTAssertNil(weakResponse)
         XCTAssertTrue(Test.deallocated)
     }
 
@@ -309,15 +313,71 @@ class StreamableResponseTests: XCTestCase {
             }
         }
 
-        var value: Test?
+        weak var weakValue: Test?
         autoreleasepool {
-            value = Test()
+            let value = Test()
             // stop early
-            value?.parentResponse?.dispose()
-            XCTAssertEqual(["100+++100"], value?.actual ?? [])
-            value = nil
+            value.parentResponse?.dispose()
+            XCTAssertEqual(["100+++100"], value.actual ?? [])
+            weakValue = value
         }
-        XCTAssertNil(value)
+        XCTAssertNil(weakValue)
         XCTAssertTrue(Test.deallocated)
+    }
+
+    func testStreamChainStartingStreamDeallocation() {
+
+        class TestResponse: Response<Int> {
+            static var deallocated = false
+            deinit {
+                TestResponse.deallocated = true
+            }
+            init() {
+                super.init(resolution: { _ -> Void in})
+            }
+        }
+
+        weak var weakStream: StreamResponse<Int>?
+        autoreleasepool {
+            let streamAndResolver = StreamResponse<Int>.asyncResponse()
+
+            let expectation = expectationWithDescription("wait for next")
+
+            streamAndResolver.response.next { _ -> Response<Int> in
+                expectation.fulfill()
+                return TestResponse()
+            }
+            weakStream = streamAndResolver.response
+
+            streamAndResolver.resolver.element(.Success(1))
+
+            waitForExpectationsWithTimeout(10, handler: nil)
+        }
+
+        XCTAssertNil(weakStream)
+        XCTAssertTrue(TestResponse.deallocated)
+    }
+
+    func testStreamChainStartingResponseDeallocation() {
+
+        weak var weakStream: StreamResponse<Int>?
+        autoreleasepool {
+            let streamAndResolver = StreamResponse<Int>.asyncResponse()
+
+            let expectation = expectationWithDescription("wait for 1st next")
+
+            Response(100)
+                .next { _ -> StreamResponse<Int> in
+                    expectation.fulfill()
+                    return streamAndResolver.response
+                }.next { _ in
+                    return Response(1)
+            }
+            weakStream = streamAndResolver.response
+
+            waitForExpectationsWithTimeout(10, handler: nil)
+        }
+
+        XCTAssertNil(weakStream)
     }
 }
