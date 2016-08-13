@@ -17,11 +17,6 @@ public protocol StreamResponseType: ResponseType {
 extension StreamResponse {
 
     @warn_unused_result
-    func nextAnyway<U>(after: Result<T> throws -> Response<U>) -> StreamResponse<U> {
-        return nextAnyway(on: defaultQueue, after: after)
-    }
-
-    @warn_unused_result
     public func nextAnyway<U>(on queue: dispatch_queue_t = defaultQueue, after: Result<T> throws -> U) -> StreamResponse<U> {
         return nextAnyway(on: queue) { result in
             return Response<U> { $0.resolve(.Success(try after(result))) }.withLabel("NextAnyway.Map")
@@ -80,21 +75,7 @@ extension StreamResponse {
     @warn_unused_result
     public func recover(on queue: dispatch_queue_t = defaultQueue, recovery: ErrorType throws -> Response<T>) -> StreamResponse<T> {
         return nextAnyway(on: queue) { result in
-            return Response { (resolver: ResponseResolver) -> Void in
-                switch result {
-                case .Success(let value):
-                    resolver.resolve(.Success(value))
-                case .Error(let error):
-                    try recovery(error).always(on: queue) { recoveryResult in
-                        switch recoveryResult {
-                        case .Success(let value):
-                            resolver.resolve(.Success(value))
-                        case .Error(let error):
-                            resolver.resolve(.Error(error))
-                        }
-                    }
-                }
-                }.withLabel("Recover")
+            return RecoverResponse(result: result, on: queue, recovery: recovery)
         }
     }
 

@@ -34,7 +34,7 @@ public class StreamResponse<T>: BaseResponse<T>, StreamResponseType {
     }
 
     @warn_unused_result
-    public func nextAnyway<U>(on queue: dispatch_queue_t, after: Result<T> throws -> Response<U>) -> StreamResponse<U> {
+    public func nextAnyway<U>(on queue: dispatch_queue_t = defaultQueue, after: Result<T> throws -> Response<U>) -> StreamResponse<U> {
 
         let (monitorResponse, monitorResolver) = StreamResponse<U>.asyncResponse()
         monitorResponse.label = "NextAnywayMonitor"
