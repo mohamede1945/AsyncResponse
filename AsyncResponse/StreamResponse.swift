@@ -39,13 +39,13 @@ public class StreamResponse<T>: BaseResponse<T>, StreamResponseType {
         let (monitorResponse, monitorResolver) = StreamResponse<U>.asyncResponse()
         monitorResponse.label = "NextAnywayMonitor"
 
-        func next(result: Result<T>, intermediate: Bool) {
+        func next(result: Result<T>, resolving: Bool) {
             do {
                 try after(result)
                     .addListener(BlockResponseResolver<U>(
                         elementBlock: nil,
                         resolveBlock: {
-                            if intermediate {
+                            if !resolving {
                                 monitorResolver.element($0)
                             } else {
                                 monitorResolver.resolve($0)
@@ -53,7 +53,7 @@ public class StreamResponse<T>: BaseResponse<T>, StreamResponseType {
                         },
                         disposeBlock: nil), on: queue)
             } catch {
-                if intermediate {
+                if !resolving {
                     monitorResolver.element(.Error(error))
                 } else {
                     monitorResolver.resolve(.Error(error))
@@ -63,8 +63,8 @@ public class StreamResponse<T>: BaseResponse<T>, StreamResponseType {
 
         addListener(
             BlockResponseResolver<T>(
-                elementBlock: { next($0, intermediate: true) },
-                resolveBlock: { next($0, intermediate: true) },
+                elementBlock: { next($0, resolving: false) },
+                resolveBlock: { next($0, resolving: true) },
                 disposeBlock: nil),
             on: queue)
 

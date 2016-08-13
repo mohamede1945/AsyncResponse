@@ -11,6 +11,13 @@ import XCTest
 
 class StreamableResponseTests: XCTestCase {
 
+    func testInit() {
+        let response = StreamResponse<Int> { resolver -> Void in
+            resolver.resolve(.Success(1))
+        }
+        XCTAssertEqual(1, response.result?.success)
+    }
+
     func testStreamOfRespones() {
 
         let expectation = expectationWithDescription("stream expect")
@@ -394,5 +401,45 @@ class StreamableResponseTests: XCTestCase {
         }
 
         XCTAssertNil(weakStream)
+    }
+
+    func testNextThrowIntermediateException() {
+
+        let expectation = expectationWithDescription("next")
+
+        let (response, resolver) = StreamResponse<Int>.asyncResponse()
+
+        response
+            .next { _ -> Response<Int> in
+                throw Error.CustomError
+            }.error { error in
+                XCTAssertEqual(Error.CustomError, error as? Error)
+                expectation.fulfill()
+        }
+
+        resolver.element(.Success(1))
+
+        waitForExpectationsWithTimeout(10, handler: nil)
+
+    }
+
+    func testNextThrowResolvingException() {
+
+        let expectation = expectationWithDescription("next")
+
+        let (response, resolver) = StreamResponse<Int>.asyncResponse()
+
+        response
+            .next { _ -> Response<Int> in
+                throw Error.CustomError
+            }.error { error in
+                XCTAssertEqual(Error.CustomError, error as? Error)
+                expectation.fulfill()
+        }
+
+        resolver.resolve(.Success(1))
+
+        waitForExpectationsWithTimeout(10, handler: nil)
+        
     }
 }
