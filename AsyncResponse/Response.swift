@@ -18,15 +18,10 @@ public class Response<T>: BaseResponse<T>, SingleResponseType {
         super.init(error: error)
     }
 
-    public init(@noescape resolution: ResponseResolver<T> throws -> Void) {
-        super.init { superResolver -> Disposable? in
-            let resolver = ResponseResolver(resolver: superResolver)
-            do {
-                try resolution(resolver)
-            } catch {
-                resolver.resolve(.Error(error))
-            }
-            return nil
+    public convenience init(@noescape resolution: ResponseResolver<T> throws -> Void) {
+        self.init { resolver -> Disposable in
+            try resolution(resolver)
+            return NoOperationDisposable()
         }
     }
 
@@ -37,7 +32,7 @@ public class Response<T>: BaseResponse<T>, SingleResponseType {
                 return try resolution(resolver)
             } catch {
                 resolver.resolve(.Error(error))
-                return nil
+                return NoOperationDisposable()
             }
         }
     }
@@ -84,13 +79,9 @@ public class Response<T>: BaseResponse<T>, SingleResponseType {
         })
     }
 
-    private init(@noescape resolution: ResponseResolver<T> -> Disposable?) {
-        super.init { return resolution(ResponseResolver(resolver: $0)) }
-    }
-
-    public class func asyncResponse(disposable disposable: Disposable? = nil) -> (response: Response<T>, resolver: ResponseResolver<T>) {
+    public class func asyncResponse(disposable disposable: Disposable = NoOperationDisposable()) -> (response: Response<T>, resolver: ResponseResolver<T>) {
         var resolver: ResponseResolver<T>!
-        let response = Response { (r: ResponseResolver) -> Disposable? in
+        let response = Response { r -> Disposable in
             resolver = r
             return disposable
         }
@@ -105,18 +96,18 @@ public class Response<T>: BaseResponse<T>, SingleResponseType {
 
             addListener(
                 BlockResponseResolver<T>(
-                    elementBlock: { _ in },
+                    elementBlock: nil,
                     resolveBlock: { result in
                         do {
                             try after(result)
                                 .addListener(BlockResponseResolver<U>(
-                                    elementBlock: { _ in }, // will never be called
+                                    elementBlock: nil, // will never be called
                                     resolveBlock: { monitorResolver.resolve($0) },
-                                    disposeBlock: { }), on: queue)
+                                    disposeBlock: nil), on: queue)
                         } catch {
                             monitorResolver.resolve(.Error(error))
                         }
-                    }, disposeBlock: { }),
+                    }, disposeBlock: nil),
                 on: queue)
 
         return monitorResponse
@@ -130,21 +121,20 @@ public class Response<T>: BaseResponse<T>, SingleResponseType {
 
         addListener(
             BlockResponseResolver<T>(
-                elementBlock: { _ in },
+                elementBlock: nil,
                 resolveBlock: { result in
                     do {
                         try after(result)
                             .addListener(BlockResponseResolver<U>(
                                 elementBlock: { monitorResolver.element($0) },
                                 resolveBlock: { monitorResolver.resolve($0) },
-                                disposeBlock: { }), on: queue)
+                                disposeBlock: nil), on: queue)
                     } catch {
                         monitorResolver.resolve(.Error(error))
                     }
-                }, disposeBlock: { }),
+                }, disposeBlock: nil),
             on: queue)
 
         return monitorResponse
     }
 }
-

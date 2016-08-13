@@ -11,6 +11,25 @@ import AsyncResponse
 
 class ResponseTests: XCTestCase {
 
+    func testDescription() {
+        let (response, resolver) = Response<Int>.asyncResponse()
+
+        let reference = String(format:"%p", unsafeBitCast(response, Int.self))
+
+        XCTAssertEqual("<Response<Int>: \(reference) result=pending...; always=0; branches=0>", response.description)
+        XCTAssertEqual("<Response<Int>: \(reference) result=pending...; always=0; branches=0>", response.debugDescription)
+
+        response.label = "test"
+
+        XCTAssertEqual("<Response<Int>: \(reference) label=test; result=pending...; always=0; branches=0>", response.description)
+        XCTAssertEqual("<Response<Int>: \(reference) label=test; result=pending...; always=0; branches=0>", response.debugDescription)
+
+        resolver.resolve(.Success(1))
+
+        XCTAssertEqual("<Response<Int>: \(reference) label=test; result=Success(1); always=0; branches=0>", response.description)
+        XCTAssertEqual("<Response<Int>: \(reference) label=test; result=Success(1); always=0; branches=0>", response.debugDescription)
+    }
+
     func testInitWithValue() {
         let response1 = Response(10)
         XCTAssertTrue(response1.completed)
@@ -73,7 +92,7 @@ class ResponseTests: XCTestCase {
     func testAsyncResponse() {
         let (response1, resolver1) = Response<Int>.asyncResponse()
         XCTAssertFalse(response1.completed)
-        resolver1.resolveSuccess(1)
+        resolver1.resolve(.Success(1))
         XCTAssertTrue(response1.completed)
         XCTAssertTrue(response1.succeeded)
         XCTAssertFalse(response1.failed)
@@ -81,7 +100,7 @@ class ResponseTests: XCTestCase {
 
         let (response2, resolver2) = Response<Int>.asyncResponse()
         XCTAssertFalse(response2.completed)
-        resolver2.resolveError(Error.GeneralError)
+        resolver2.resolve(.Error(Error.GeneralError))
         XCTAssertTrue(response2.completed)
         XCTAssertFalse(response2.succeeded)
         XCTAssertTrue(response2.failed)
@@ -465,9 +484,9 @@ class ResponseTests: XCTestCase {
                 XCTAssertEqual(1, numberOfCalls)
         }
 
-        resolver1.resolveSuccess(1)
-        resolver1.resolveSuccess(2) // should call the always
-        resolver1.resolveSuccess(3) // should call the always
+        resolver1.resolve(.Success(1))
+        resolver1.resolve(.Success(2)) // should call the always
+        resolver1.resolve(.Success(3)) // should call the always
         XCTAssertEqual(3, response1.result?.success)
     }
 
@@ -481,7 +500,7 @@ class ResponseTests: XCTestCase {
                 response1.always(on: zalgo) { _ in
                     XCTAssertNotNil(self.response1)
                 }
-                resolver1.resolveSuccess(1)
+                resolver1.resolve(.Success(1))
             }
 
             deinit {

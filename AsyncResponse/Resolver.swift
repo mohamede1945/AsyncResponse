@@ -14,16 +14,6 @@ public protocol Resolver: Disposable {
     func resolve(result: Result<T>)
 }
 
-extension Resolver {
-    public func resolveSuccess(value: T) {
-        return resolve(.Success(value))
-    }
-
-    public func resolveError(error: ErrorType) {
-        return resolve(.Error(error))
-    }
-}
-
 public struct ResponseResolver<T>: Resolver {
 
     let resolver: StreamResponseResolver<T>
@@ -45,12 +35,12 @@ public struct StreamResponseResolver<T>: Resolver {
 
 public struct BlockResponseResolver<T>: Resolver {
 
-    let elementBlock: Result<T> -> Void
-    let resolveBlock: Result<T> -> Void
-    let disposeBlock: () -> Void
+    let elementBlock: (Result<T> -> Void)?
+    let resolveBlock: (Result<T> -> Void)?
+    let disposeBlock: (() -> Void)?
 
-    public func element(result: Result<T>) { elementBlock(result) }
-    public func resolve(result: Result<T>) { resolveBlock(result) }
+    public func element(result: Result<T>) { elementBlock?(result) }
+    public func resolve(result: Result<T>) { resolveBlock?(result) }
 
-    public func dispose() { disposeBlock() }
+    public func dispose() { disposeBlock?() }
 }

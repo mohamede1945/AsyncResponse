@@ -156,6 +156,20 @@ class StreamableResponseTests: XCTestCase {
         XCTAssertEqual(expected, actual)
     }
 
+    func testStreamResponseWithValueThenResponse() {
+
+        let (stream, resolver) = StreamResponse<Int>.asyncResponse()
+
+        resolver.element(.Success(1))
+        var values: [Int] = []
+        let _ = stream.next(on: zalgo) { value -> Int in
+            values.append(value)
+            return value
+        }
+
+        XCTAssertEqual([1], values)
+    }
+
     func testResponseDeallocated() {
 
         class Test {
@@ -166,7 +180,7 @@ class StreamableResponseTests: XCTestCase {
                 response1.always(on: zalgo) { [weak self] _ in
                     XCTAssertNotNil(self?.response1)
                 }
-                resolver1.resolveSuccess(1)
+                resolver1.resolve(.Success(1))
             }
 
             deinit {
@@ -208,9 +222,9 @@ class StreamableResponseTests: XCTestCase {
         autoreleasepool {
             let value = Test()
             weakValue = value
-            value.resolver1.resolveSuccess(1)
+            value.resolver1.resolve(.Success(1))
             XCTAssertFalse(Test.deallocated)
-            value.resolver1.resolveSuccess(1)
+            value.resolver1.resolve(.Success(1))
         }
         XCTAssertNil(weakValue)
         XCTAssertTrue(Test.deallocated)
@@ -319,7 +333,7 @@ class StreamableResponseTests: XCTestCase {
                 TestResponse.deallocated = true
             }
             init() {
-                super.init(resolution: { _ -> Void in})
+                super.init(resolution: { _ -> Disposable in NoOperationDisposable()})
             }
         }
 

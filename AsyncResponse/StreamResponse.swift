@@ -10,27 +10,23 @@ import Foundation
 
 public class StreamResponse<T>: BaseResponse<T>, StreamResponseType {
 
-    public init(@noescape resolution: StreamResponseResolver<T> -> Void) {
-        super.init  { resolver -> Disposable? in
+    public convenience init(@noescape resolution: StreamResponseResolver<T> -> Void) {
+        self.init { resolver -> Disposable in
             resolution(resolver)
-            return nil
+            return NoOperationDisposable()
         }
     }
 
-    public init(@noescape resolution: StreamResponseResolver<T> -> Disposable) {
-        super.init  { resolver -> Disposable? in
+    public override init(@noescape resolution: StreamResponseResolver<T> -> Disposable) {
+        super.init  { resolver -> Disposable in
             return resolution(resolver)
         }
     }
 
-    private override init(@noescape resolution: StreamResponseResolver<T> -> Disposable?) {
-        super.init(resolution: resolution)
-    }
-
-    public class func asyncResponse(disposable disposable: Disposable? = nil) -> (response: StreamResponse<T>, resolver: StreamResponseResolver<T>) {
+    public class func asyncResponse(disposable disposable: Disposable = NoOperationDisposable()) -> (response: StreamResponse<T>, resolver: StreamResponseResolver<T>) {
 
         var resolver: StreamResponseResolver<T>!
-        let response = StreamResponse { (r: StreamResponseResolver) -> Disposable? in
+        let response = StreamResponse { (r: StreamResponseResolver) -> Disposable in
             resolver = r
             return disposable
         }
@@ -47,7 +43,7 @@ public class StreamResponse<T>: BaseResponse<T>, StreamResponseType {
             do {
                 try after(result)
                     .addListener(BlockResponseResolver<U>(
-                        elementBlock: { _ in },
+                        elementBlock: nil,
                         resolveBlock: {
                             if intermediate {
                                 monitorResolver.element($0)
@@ -55,7 +51,7 @@ public class StreamResponse<T>: BaseResponse<T>, StreamResponseType {
                                 monitorResolver.resolve($0)
                             }
                         },
-                        disposeBlock: { }), on: queue)
+                        disposeBlock: nil), on: queue)
             } catch {
                 if intermediate {
                     monitorResolver.element(.Error(error))
@@ -69,7 +65,7 @@ public class StreamResponse<T>: BaseResponse<T>, StreamResponseType {
             BlockResponseResolver<T>(
                 elementBlock: { next($0, intermediate: true) },
                 resolveBlock: { next($0, intermediate: true) },
-                disposeBlock: { }),
+                disposeBlock: nil),
             on: queue)
 
         return monitorResponse

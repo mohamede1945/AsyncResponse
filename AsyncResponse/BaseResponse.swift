@@ -27,7 +27,7 @@ public class BaseResponse<T>: CustomStringConvertible, CustomDebugStringConverti
 
     private var listeners: [(dispatch_queue_t, BlockResponseResolver<T>)] = []
 
-    private var _diposable: Disposable?
+    private var _diposable: Disposable!
 
     public var label: String? = nil
 
@@ -35,21 +35,27 @@ public class BaseResponse<T>: CustomStringConvertible, CustomDebugStringConverti
         return synchronized { _result }
     }
 
-    public var description: String {
-        let resultDescription: String
-        if let result = result {
-            resultDescription = result.description
-        } else {
-            resultDescription = "pending..."
-        }
-
-        var properties = ""
+    var descriptionProperties: [(String, String)] {
+        var properties: [(String, String)] = []
         if let label = label {
-            properties += "label='\(label)' "
+            properties.append(("label", label))
         }
-        properties += "result='\(resultDescription)'"
+        if let result = result {
+            properties.append(("result", result.description))
+        } else {
+            properties.append(("result", "pending..."))
+        }
 
-        return "<\(self.dynamicType) \(String(format:"%p", unsafeBitCast(self, Int.self))) " + properties + ">"
+        properties.append(("always", "\(completions.count)"))
+        properties.append(("branches", "\(listeners.count)"))
+
+        return properties
+    }
+
+    public var description: String {
+        let properties = descriptionProperties.map { $0 + "=" + $1 }.joinWithSeparator("; ")
+
+        return "<\(self.dynamicType): \(String(format:"%p", unsafeBitCast(self, Int.self))) " + properties + ">"
     }
 
     public var debugDescription: String {
@@ -57,14 +63,16 @@ public class BaseResponse<T>: CustomStringConvertible, CustomDebugStringConverti
     }
 
     public init(_ value: T) {
+        _diposable = NoOperationDisposable()
         resolve(.Success(value))
     }
 
     public init(error: ErrorType) {
+        _diposable = NoOperationDisposable()
         resolve(.Error(error))
     }
 
-    public init(@noescape resolution: StreamResponseResolver<T> -> Disposable?) {
+    public init(@noescape resolution: StreamResponseResolver<T> -> Disposable) {
         let resolver = StreamResponseResolver<T>(response: self)
         _diposable = resolution(resolver)
     }
@@ -172,7 +180,6 @@ public class BaseResponse<T>: CustomStringConvertible, CustomDebugStringConverti
         let (resolvers, disposable): ([BlockResponseResolver<T>], Disposable?) = synchronized {
 
             let diposable = _diposable
-            _diposable = nil
 
             let resolvers = self.listeners.map { $0.1 }
             self.listeners.removeAll()
