@@ -47,10 +47,18 @@ func streamOperation<T>(values: [T], errors: [Int: Error] = [:], queue: dispatch
         }
 
         queue.after(0.1) {
-            if let error = errors[index] {
-                resolver.element(.Error(error))
+            if index == values.count - 1 {
+                if let error = errors[index] {
+                    resolver.resolve(.Error(error))
+                } else {
+                    resolver.resolve(.Success(values[index]))
+                }
             } else {
-                resolver.element(.Success(values[index]))
+                if let error = errors[index] {
+                    resolver.element(.Error(error))
+                } else {
+                    resolver.element(.Success(values[index]))
+                }
             }
             enqueue(index + 1)
         }

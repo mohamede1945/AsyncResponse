@@ -170,6 +170,21 @@ class StreamableResponseTests: XCTestCase {
         XCTAssertEqual([1], values)
     }
 
+    func testNextThrowingStreamResponse() {
+
+        let expectation = expectationWithDescription("wait for operation")
+
+        operation(1)
+            .next { value -> StreamResponse<Int> in
+                throw Error.GeneralError
+            }.error { error in
+                XCTAssertEqual(Error.GeneralError, error as? Error)
+                expectation.fulfill()
+        }
+
+        waitForExpectationsWithTimeout(10, handler: nil)
+    }
+
     func testResponseDeallocated() {
 
         class Test {

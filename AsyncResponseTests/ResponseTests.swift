@@ -89,6 +89,18 @@ class ResponseTests: XCTestCase {
         XCTAssertTrue(called)
     }
 
+    func testInitWithResolutionThrowingError() -> Void {
+
+        var called = false
+        Response<Int> { (resolution: ResponseResolver) -> Void in
+            throw Error.CustomError
+            }.error (on: zalgo) { error in
+                called = true
+                XCTAssertEqual(error as? Error, Error.CustomError)
+        }
+        XCTAssertTrue(called)
+    }
+
     func testAsyncResponse() {
         let (response1, resolver1) = Response<Int>.asyncResponse()
         XCTAssertFalse(response1.completed)
