@@ -7,10 +7,11 @@
 //
 
 import Foundation
+import Dispatch
 
 extension dispatch_queue_t {
 
-    public func async<SuccessData>(block: () throws -> SuccessData) -> Response<SuccessData> {
+    public func async<T>(block: () throws -> T) -> Response<T> {
         return Response { (resolver: ResponseResolver) in
             executeConsideringZalgoAndWaldo {
                 do {
@@ -22,7 +23,7 @@ extension dispatch_queue_t {
         }.withLabel("dispatch_async")
     }
 
-    public func after<SuccessData>(delay: NSTimeInterval, block: () throws -> SuccessData) -> Response<SuccessData> {
+    public func after<T>(delay: NSTimeInterval, block: () throws -> T) -> Response<T> {
         let delta = delay * NSTimeInterval(NSEC_PER_SEC)
         let when = dispatch_time(DISPATCH_TIME_NOW, Int64(delta))
 
