@@ -13,6 +13,10 @@ public protocol Disposable {
 }
 
 public struct NoOperationDisposable: Disposable {
+
+    public init() {
+    }
+
     public func dispose() {
     }
 }
